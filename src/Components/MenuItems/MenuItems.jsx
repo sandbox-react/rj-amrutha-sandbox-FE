@@ -113,7 +113,7 @@ export const menuSections = [
     items: [
       {
         label: "Contact Messages",
-        path: "/admin/contact-messages", // admin contact messages page
+        path: "/admin/contact-messages", 
         icon: MailOutlineOutlinedIcon,
       },
     ],
