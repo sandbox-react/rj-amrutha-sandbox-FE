@@ -22,6 +22,7 @@ import PageFormPage from "../Pages/AddPage/AddPage";
 import ProductDashboard from "../Pages/ProductDashboard/ProductDashboard";
 import SalesDashboard from "../Pages/SalesDashboard/SalesDashboard";
 import InventoryDashboard from "../Pages/InventoryDashboard/InventoryDashboard";
+import ContactMessagesPage from "../Pages/Contact/Contact";
 
 const AppRouter = () => {
   const token = localStorage.getItem("token");
@@ -102,6 +103,8 @@ const AppRouter = () => {
           <Route path="product-dashboard" element={<ProductDashboard />} />
           <Route path="sales-dashboard" element={<SalesDashboard />} />
           <Route path="inventory-dashboard" element={<InventoryDashboard />} />
+          <Route path="/admin/contact-messages" element={<ContactMessagesPage />} />
+          
         </Route>
 
         {/* fallback */}

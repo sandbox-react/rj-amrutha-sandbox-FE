@@ -12,8 +12,7 @@ import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
-// import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-// import LayersOutlinedIcon from "@mui/icons-material/LayersOutlined";
+import MailOutlineOutlinedIcon from "@mui/icons-material/MailOutlineOutlined";
 
 export const menuSections = [
   {
@@ -29,8 +28,6 @@ export const menuSections = [
         path: "/analytics",
         icon: InsightsOutlinedIcon,
       },
-
-      // ✅ NEW DASHBOARDS
       {
         label: "Product Dashboard",
         path: "/product-dashboard",
@@ -112,11 +109,21 @@ export const menuSections = [
     ],
   },
   {
+    section: "Support",
+    items: [
+      {
+        label: "Contact Messages",
+        path: "/admin/contact-messages", // admin contact messages page
+        icon: MailOutlineOutlinedIcon,
+      },
+    ],
+  },
+  {
     section: "Account",
     items: [
       {
         label: "Logout",
-        path: "/logout", // special route
+        path: "/logout",
         icon: LogoutOutlinedIcon,
       },
     ],

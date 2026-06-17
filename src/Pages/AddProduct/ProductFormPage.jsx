@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -18,13 +19,7 @@ import ArrowBackOutlinedIcon from "@mui/icons-material/ArrowBackOutlined";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import { useNavigate, useParams } from "react-router-dom";
-import {
-  deleteData,
-  getData,
-  postData,
-  putData,
-  uploadFile,
-} from "../../Axios/axios";
+import { getData, postData, putData, uploadFile } from "../../Axios/axios";
 
 const initialState = {
   categoryId: "",
@@ -41,17 +36,11 @@ const initialState = {
   totalPrice: "",
   isActive: true,
   isFeatured: false,
-  variants: [
-    {
-      label: "",
-      weight: "",
-      size: "",
-      price: "",
-      stock: "",
-      sku: "",
-      isActive: true,
-    },
-  ],
+  mealType: "",
+  preference: "",
+  stock: 0,
+  reorderPoint: 20,
+  isTopSeller: false,
 };
 
 const ProductFormPage = () => {
@@ -71,28 +60,20 @@ const ProductFormPage = () => {
   const [successMsg, setSuccessMsg] = useState("");
   const [errors, setErrors] = useState({});
 
-  const makeSlug = (value = "") => {
-    return value
+  const makeSlug = (value = "") =>
+    value
       .toLowerCase()
       .trim()
       .replace(/&/g, "and")
       .replace(/[^\w\s-]/g, "")
       .replace(/\s+/g, "-")
       .replace(/--+/g, "-");
-  };
 
   const computedTaxAmount = useMemo(() => {
     const base = Number(formData.basePrice || 0);
     const tax = Number(formData.taxValue || 0);
-
-    if (formData.taxType === "percentage") {
-      return ((base * tax) / 100).toFixed(2);
-    }
-
-    if (formData.taxType === "flat") {
-      return tax.toFixed(2);
-    }
-
+    if (formData.taxType === "percentage") return ((base * tax) / 100).toFixed(2);
+    if (formData.taxType === "flat") return tax.toFixed(2);
     return "0.00";
   }, [formData.basePrice, formData.taxType, formData.taxValue]);
 
@@ -129,29 +110,11 @@ const ProductFormPage = () => {
           totalPrice: product?.totalPrice || "",
           isActive: product?.isActive ?? true,
           isFeatured: product?.isFeatured ?? false,
-          variants:
-            product?.variants?.length > 0
-              ? product.variants.map((item) => ({
-                  id: item.id,
-                  label: item.label || "",
-                  weight: item.weight || "",
-                  size: item.size || "",
-                  price: item.price || "",
-                  stock: item.stock || "",
-                  sku: item.sku || "",
-                  isActive: item.isActive ?? true,
-                }))
-              : [
-                  {
-                    label: "",
-                    weight: "",
-                    size: "",
-                    price: "",
-                    stock: "",
-                    sku: "",
-                    isActive: true,
-                  },
-                ],
+          mealType: product?.mealType || "",
+          preference: product?.preference || "",
+          stock: product?.stock ?? 0,
+          reorderPoint: product?.reorderPoint ?? 20,
+          isTopSeller: product?.isTopSeller ?? false,
         });
 
         setPreview(product?.imageUrl || "");
@@ -171,102 +134,43 @@ const ProductFormPage = () => {
   }, [id]);
 
   useEffect(() => {
-    setFormData((prev) => ({
-      ...prev,
-      totalPrice: computedTotalPrice,
-    }));
+    setFormData((prev) => ({ ...prev, totalPrice: computedTotalPrice }));
   }, [computedTotalPrice]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => {
-      const updated = {
-        ...prev,
-        [name]: value,
-      };
-
-      if (name === "name" && !isEdit) {
-        updated.slug = makeSlug(value);
-      }
-
+      const updated = { ...prev, [name]: value };
+      if (name === "name" && !isEdit) updated.slug = makeSlug(value);
       return updated;
     });
-
     setErrors((prev) => ({ ...prev, [name]: "" }));
     setApiError("");
     setSuccessMsg("");
   };
 
-  const handleSwitchChange = (name) => (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: e.target.checked,
-    }));
+  const handleNumberChange = (name) => (e) => {
+    const raw = e.target.value;
+    const val = raw === "" ? "" : Number(raw);
+    setFormData((prev) => ({ ...prev, [name]: val }));
+    setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
-  const handleVariantChange = (index, field, value) => {
-    setFormData((prev) => {
-      const updatedVariants = [...prev.variants];
-      updatedVariants[index] = {
-        ...updatedVariants[index],
-        [field]: value,
-      };
-      return {
-        ...prev,
-        variants: updatedVariants,
-      };
-    });
-  };
-
-  const handleAddVariant = () => {
-    setFormData((prev) => ({
-      ...prev,
-      variants: [
-        ...prev.variants,
-        {
-          label: "",
-          weight: "",
-          size: "",
-          price: "",
-          stock: "",
-          sku: "",
-          isActive: true,
-        },
-      ],
-    }));
-  };
-
-  const handleRemoveVariant = (index) => {
-    setFormData((prev) => {
-      if (prev.variants.length === 1) return prev;
-      return {
-        ...prev,
-        variants: prev.variants.filter((_, idx) => idx !== index),
-      };
-    });
-  };
+  const handleSwitchChange = (name) => (e) =>
+    setFormData((prev) => ({ ...prev, [name]: e.target.checked }));
 
   const handleUploadImage = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       setUploading(true);
       setApiError("");
       setSuccessMsg("");
-
       const formDataObj = new FormData();
       formDataObj.append("image", file);
-
       const response = await uploadFile("/upload/image", formDataObj);
       const uploadedUrl = response?.data?.url || "";
-
-      setFormData((prev) => ({
-        ...prev,
-        imageUrl: uploadedUrl,
-      }));
-
+      setFormData((prev) => ({ ...prev, imageUrl: uploadedUrl }));
       setPreview(uploadedUrl);
       setSuccessMsg(response?.message || "Image uploaded successfully");
     } catch (error) {
@@ -279,7 +183,6 @@ const ProductFormPage = () => {
 
   const handleCopyImageUrl = async () => {
     if (!formData.imageUrl) return;
-
     try {
       await navigator.clipboard.writeText(formData.imageUrl);
       setSuccessMsg("Image URL copied successfully");
@@ -290,50 +193,13 @@ const ProductFormPage = () => {
 
   const validate = () => {
     const newErrors = {};
-
-    if (!formData.categoryId) {
-      newErrors.categoryId = "Category is required";
-    }
-
-    if (!formData.name.trim()) {
-      newErrors.name = "Product name is required";
-    }
-
-    if (!formData.slug.trim()) {
-      newErrors.slug = "Slug is required";
-    }
-
-    if (!formData.sku.trim()) {
-      newErrors.sku = "SKU is required";
-    }
-
-    if (!formData.basePrice) {
-      newErrors.basePrice = "Base price is required";
-    }
-
-    if (formData.imageUrl && !/^https?:\/\/.+/i.test(formData.imageUrl)) {
+    if (!formData.categoryId) newErrors.categoryId = "Category is required";
+    if (!formData.name.trim()) newErrors.name = "Product name is required";
+    if (!formData.slug.trim()) newErrors.slug = "Slug is required";
+    if (!formData.sku.trim()) newErrors.sku = "SKU is required";
+    if (!formData.basePrice) newErrors.basePrice = "Base price is required";
+    if (formData.imageUrl && !/^https?:\/\/.+/i.test(formData.imageUrl))
       newErrors.imageUrl = "Image URL must be valid";
-    }
-
-    formData.variants.forEach((variant, index) => {
-      if (!variant.label?.trim()) {
-        newErrors[`variant_label_${index}`] = "Variant label is required";
-      }
-      if (!variant.price) {
-        newErrors[`variant_price_${index}`] = "Variant price is required";
-      }
-      if (
-        variant.stock === "" ||
-        variant.stock === null ||
-        variant.stock === undefined
-      ) {
-        newErrors[`variant_stock_${index}`] = "Variant stock is required";
-      }
-      if (!variant.sku?.trim()) {
-        newErrors[`variant_sku_${index}`] = "Variant SKU is required";
-      }
-    });
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -353,15 +219,11 @@ const ProductFormPage = () => {
     totalPrice: Number(computedTotalPrice),
     isActive: formData.isActive,
     isFeatured: formData.isFeatured,
-    variants: formData.variants.map((variant) => ({
-      label: variant.label.trim(),
-      weight: variant.weight || null,
-      size: variant.size || null,
-      price: Number(variant.price),
-      stock: Number(variant.stock),
-      sku: variant.sku.trim(),
-      isActive: variant.isActive ?? true,
-    })),
+    mealType: formData.mealType || null,
+    preference: formData.preference || null,
+    stock: Number(formData.stock || 0),
+    reorderPoint: Number(formData.reorderPoint || 20),
+    isTopSeller: !!formData.isTopSeller,
   });
 
   const updateProductPayload = () => ({
@@ -379,6 +241,11 @@ const ProductFormPage = () => {
     totalPrice: Number(computedTotalPrice),
     isActive: formData.isActive,
     isFeatured: formData.isFeatured,
+    mealType: formData.mealType || null,
+    preference: formData.preference || null,
+    stock: Number(formData.stock || 0),
+    reorderPoint: Number(formData.reorderPoint || 20),
+    isTopSeller: !!formData.isTopSeller,
   });
 
   const handleSubmit = async (e) => {
@@ -393,45 +260,12 @@ const ProductFormPage = () => {
       if (isEdit) {
         const response = await putData(`/products/${id}`, updateProductPayload());
         setSuccessMsg(response?.message || "Product updated successfully");
-
-        const existingVariantIds = formData.variants
-          .filter((v) => v.id)
-          .map((v) => v.id);
-
-        const originalProduct = await getData(`/products/${id}`);
-        const originalVariants = originalProduct?.data?.variants || [];
-
-        for (const variant of formData.variants) {
-          const variantPayload = {
-            label: variant.label.trim(),
-            weight: variant.weight || null,
-            size: variant.size || null,
-            price: Number(variant.price),
-            stock: Number(variant.stock),
-            sku: variant.sku.trim(),
-            isActive: variant.isActive ?? true,
-          };
-
-          if (variant.id) {
-            await putData(`/products/variants/${variant.id}`, variantPayload);
-          } else {
-            await postData(`/products/${id}/variants`, variantPayload);
-          }
-        }
-
-        for (const oldVariant of originalVariants) {
-          if (!existingVariantIds.includes(oldVariant.id)) {
-            await deleteData(`/products/variants/${oldVariant.id}`);
-          }
-        }
       } else {
         const response = await postData("/products", createProductPayload());
         setSuccessMsg(response?.message || "Product created successfully");
       }
 
-      setTimeout(() => {
-        navigate("/products");
-      }, 800);
+      setTimeout(() => navigate("/products"), 800);
     } catch (error) {
       if (error?.errors?.length) {
         const validationErrors = {};
@@ -457,22 +291,12 @@ const ProductFormPage = () => {
 
   return (
     <Box>
-      <Stack
-        direction="row"
-        justifyContent="space-between"
-        alignItems="center"
-        sx={{ mb: 2 }}
-      >
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h5" fontWeight={600}>
           {isEdit ? "Edit Product" : "Add Product"}
         </Typography>
 
-        <Button
-          variant="outlined"
-          size="small"
-          startIcon={<ArrowBackOutlinedIcon />}
-          onClick={() => navigate("/products")}
-        >
+        <Button variant="outlined" size="small" startIcon={<ArrowBackOutlinedIcon />} onClick={() => navigate("/products")}>
           Back
         </Button>
       </Stack>
@@ -480,27 +304,11 @@ const ProductFormPage = () => {
       {apiError && <Alert severity="error" sx={{ mb: 2 }}>{apiError}</Alert>}
       {successMsg && <Alert severity="success" sx={{ mb: 2 }}>{successMsg}</Alert>}
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          borderRadius: 2,
-          border: "1px solid #e6dbe2",
-        }}
-      >
+      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: "1px solid #e6dbe2" }}>
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                select
-                fullWidth
-                label="Category"
-                name="categoryId"
-                value={formData.categoryId}
-                onChange={handleChange}
-                error={!!errors.categoryId}
-                helperText={errors.categoryId}
-              >
+              <TextField select fullWidth label="Category" name="categoryId" value={formData.categoryId} onChange={handleChange} error={!!errors.categoryId} helperText={errors.categoryId}>
                 {categories.map((c) => (
                   <MenuItem key={c.id} value={c.id}>
                     {c.name}
@@ -510,75 +318,27 @@ const ProductFormPage = () => {
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Product Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                error={!!errors.name}
-                helperText={errors.name}
-              />
+              <TextField fullWidth label="Product Name" name="name" value={formData.name} onChange={handleChange} error={!!errors.name} helperText={errors.name} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Slug"
-                name="slug"
-                value={formData.slug}
-                onChange={handleChange}
-                error={!!errors.slug}
-                helperText={errors.slug}
-              />
+              <TextField fullWidth label="Slug" name="slug" value={formData.slug} onChange={handleChange} error={!!errors.slug} helperText={errors.slug} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="SKU"
-                name="sku"
-                value={formData.sku}
-                onChange={handleChange}
-                error={!!errors.sku}
-                helperText={errors.sku}
-              />
+              <TextField fullWidth label="SKU" name="sku" value={formData.sku} onChange={handleChange} error={!!errors.sku} helperText={errors.sku} />
             </Grid>
 
             <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                multiline
-                minRows={3}
-                label="Description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-              />
+              <TextField fullWidth multiline minRows={3} label="Description" name="description" value={formData.description} onChange={handleChange} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Base Price"
-                name="basePrice"
-                value={formData.basePrice}
-                onChange={handleChange}
-                error={!!errors.basePrice}
-                helperText={errors.basePrice}
-              />
+              <TextField fullWidth type="number" label="Base Price" name="basePrice" value={formData.basePrice} onChange={handleChange} error={!!errors.basePrice} helperText={errors.basePrice} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                select
-                fullWidth
-                label="Tax Type"
-                name="taxType"
-                value={formData.taxType}
-                onChange={handleChange}
-              >
+              <TextField select fullWidth label="Tax Type" name="taxType" value={formData.taxType} onChange={handleChange}>
                 <MenuItem value="">None</MenuItem>
                 <MenuItem value="percentage">Percentage</MenuItem>
                 <MenuItem value="flat">Flat</MenuItem>
@@ -586,41 +346,15 @@ const ProductFormPage = () => {
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Tax Value"
-                name="taxValue"
-                value={formData.taxValue}
-                onChange={handleChange}
-              />
+              <TextField fullWidth type="number" label="Tax Value" name="taxValue" value={formData.taxValue} onChange={handleChange} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 3 }}>
-              <TextField
-                fullWidth
-                label="Tax Amount"
-                value={computedTaxAmount}
-                disabled
-                helperText="Automatically calculated"
-                sx={{
-                  "& .MuiInputBase-input.Mui-disabled": {
-                    WebkitTextFillColor: "#5f1431",
-                    fontWeight: 600,
-                  },
-                }}
-              />
+              <TextField fullWidth label="Tax Amount" value={computedTaxAmount} disabled helperText="Automatically calculated" sx={{ "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: "#5f1431", fontWeight: 600 } }} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                select
-                fullWidth
-                label="Discount Type"
-                name="discountType"
-                value={formData.discountType}
-                onChange={handleChange}
-              >
+              <TextField select fullWidth label="Discount Type" name="discountType" value={formData.discountType} onChange={handleChange}>
                 <MenuItem value="">None</MenuItem>
                 <MenuItem value="percentage">Percentage</MenuItem>
                 <MenuItem value="flat">Flat</MenuItem>
@@ -628,66 +362,25 @@ const ProductFormPage = () => {
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                type="number"
-                label="Discount Value"
-                name="discountValue"
-                value={formData.discountValue}
-                onChange={handleChange}
-              />
+              <TextField fullWidth type="number" label="Discount Value" name="discountValue" value={formData.discountValue} onChange={handleChange} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                label="Total Price"
-                name="totalPrice"
-                value={computedTotalPrice}
-                disabled
-                helperText="Automatically calculated from Base Price + Tax"
-                sx={{
-                  "& .MuiInputBase-input.Mui-disabled": {
-                    WebkitTextFillColor: "#5f1431",
-                    fontWeight: 600,
-                  },
-                }}
-              />
+              <TextField fullWidth label="Total Price" name="totalPrice" value={computedTotalPrice} disabled helperText="Automatically calculated from Base Price + Tax" sx={{ "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: "#5f1431", fontWeight: 600 } }} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Image URL"
-                name="imageUrl"
-                value={formData.imageUrl}
-                onChange={handleChange}
-                error={!!errors.imageUrl}
-                helperText={errors.imageUrl}
-              />
+              <TextField fullWidth label="Image URL" name="imageUrl" value={formData.imageUrl} onChange={handleChange} error={!!errors.imageUrl} helperText={errors.imageUrl} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
               <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                <Button
-                  component="label"
-                  variant="outlined"
-                  size="small"
-                  startIcon={
-                    uploading ? <CircularProgress size={14} /> : <CloudUploadOutlinedIcon />
-                  }
-                >
+                <Button component="label" variant="outlined" size="small" startIcon={uploading ? <CircularProgress size={14} /> : <CloudUploadOutlinedIcon />}>
                   Upload
                   <input hidden type="file" onChange={handleUploadImage} />
                 </Button>
 
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<ContentCopyOutlinedIcon />}
-                  onClick={handleCopyImageUrl}
-                  disabled={!formData.imageUrl}
-                >
+                <Button variant="outlined" size="small" startIcon={<ContentCopyOutlinedIcon />} onClick={handleCopyImageUrl} disabled={!formData.imageUrl}>
                   Copy URL
                 </Button>
               </Stack>
@@ -695,135 +388,48 @@ const ProductFormPage = () => {
 
             {preview && (
               <Grid size={{ xs: 12 }}>
-                <Box
-                  component="img"
-                  src={preview}
-                  alt="preview"
-                  sx={{
-                    width: 120,
-                    height: 120,
-                    objectFit: "cover",
-                    borderRadius: 2,
-                    border: "1px solid #ddd",
-                  }}
-                />
+                <Box component="img" src={preview} alt="preview" sx={{ width: 120, height: 120, objectFit: "cover", borderRadius: 2, border: "1px solid #ddd" }} />
               </Grid>
             )}
 
             <Grid size={{ xs: 12 }}>
               <Stack direction="row" spacing={2}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.isFeatured}
-                      onChange={handleSwitchChange("isFeatured")}
-                    />
-                  }
-                  label="Featured"
-                />
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={formData.isActive}
-                      onChange={handleSwitchChange("isActive")}
-                    />
-                  }
-                  label="Active"
-                />
+                <FormControlLabel control={<Switch checked={formData.isFeatured} onChange={handleSwitchChange("isFeatured")} />} label="Featured" />
+                <FormControlLabel control={<Switch checked={formData.isActive} onChange={handleSwitchChange("isActive")} />} label="Active" />
+                <FormControlLabel control={<Switch checked={formData.isTopSeller} onChange={handleSwitchChange("isTopSeller")} />} label="Top Seller" />
               </Stack>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField select fullWidth label="Meal Type" name="mealType" value={formData.mealType} onChange={handleChange}>
+                <MenuItem value="">None</MenuItem>
+                <MenuItem value="breakfast">Breakfast</MenuItem>
+                <MenuItem value="lunch">Lunch</MenuItem>
+                <MenuItem value="dinner">Dinner</MenuItem>
+                <MenuItem value="snacks">Snacks</MenuItem>
+                <MenuItem value="desserts">Desserts</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField select fullWidth label="Preference" name="preference" value={formData.preference} onChange={handleChange}>
+                <MenuItem value="">None</MenuItem>
+                <MenuItem value="vegan">Vegan</MenuItem>
+                <MenuItem value="vegetarian">Vegetarian</MenuItem>
+                <MenuItem value="non_veg">Non-Veg</MenuItem>
+              </TextField>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField fullWidth type="number" label="Stock" name="stock" value={formData.stock} onChange={handleNumberChange("stock")} />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField fullWidth type="number" label="Reorder Point" name="reorderPoint" value={formData.reorderPoint} onChange={handleNumberChange("reorderPoint")} />
             </Grid>
 
             <Grid size={{ xs: 12 }}>
               <Divider sx={{ my: 1 }} />
-              <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography fontWeight={600}>Variants</Typography>
-                <Button size="small" onClick={handleAddVariant}>
-                  Add
-                </Button>
-              </Stack>
-
-              <Stack spacing={1.5}>
-                {formData.variants.map((v, i) => (
-                  <Paper key={i} variant="outlined" sx={{ p: 1.5 }}>
-                    <Grid container spacing={1.5}>
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                          fullWidth
-                          label="Label"
-                          value={v.label}
-                          onChange={(e) => handleVariantChange(i, "label", e.target.value)}
-                          error={!!errors[`variant_label_${i}`]}
-                          helperText={errors[`variant_label_${i}`]}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 6 }}>
-                        <TextField
-                          fullWidth
-                          label="SKU"
-                          value={v.sku}
-                          onChange={(e) => handleVariantChange(i, "sku", e.target.value)}
-                          error={!!errors[`variant_sku_${i}`]}
-                          helperText={errors[`variant_sku_${i}`]}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Weight"
-                          value={v.weight}
-                          onChange={(e) => handleVariantChange(i, "weight", e.target.value)}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          label="Size"
-                          value={v.size}
-                          onChange={(e) => handleVariantChange(i, "size", e.target.value)}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          type="number"
-                          label="Price"
-                          value={v.price}
-                          onChange={(e) => handleVariantChange(i, "price", e.target.value)}
-                          error={!!errors[`variant_price_${i}`]}
-                          helperText={errors[`variant_price_${i}`]}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12, md: 3 }}>
-                        <TextField
-                          fullWidth
-                          type="number"
-                          label="Stock"
-                          value={v.stock}
-                          onChange={(e) => handleVariantChange(i, "stock", e.target.value)}
-                          error={!!errors[`variant_stock_${i}`]}
-                          helperText={errors[`variant_stock_${i}`]}
-                        />
-                      </Grid>
-
-                      <Grid size={{ xs: 12 }}>
-                        <Button
-                          color="error"
-                          size="small"
-                          onClick={() => handleRemoveVariant(i)}
-                          disabled={formData.variants.length === 1}
-                        >
-                          Remove Variant
-                        </Button>
-                      </Grid>
-                    </Grid>
-                  </Paper>
-                ))}
-              </Stack>
             </Grid>
 
             <Grid size={{ xs: 12 }}>
@@ -832,11 +438,7 @@ const ProductFormPage = () => {
                   {saving ? "Saving..." : isEdit ? "Update" : "Create"}
                 </Button>
 
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => navigate("/products")}
-                >
+                <Button variant="outlined" size="small" onClick={() => navigate("/products")}>
                   Cancel
                 </Button>
               </Stack>
