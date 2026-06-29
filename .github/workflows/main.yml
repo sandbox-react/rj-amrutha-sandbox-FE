@@ -70,9 +70,10 @@ jobs:
             PROJECT_DIR="/home/ubuntu/rj-amrutha-sandbox-FE" 
             cd $PROJECT_DIR
             
+            # Fetch changes and force the local branch to match origin exactly
             git fetch origin
             git checkout development
-            git pull origin development
+            git reset --hard origin/development
             
             # Clean up old containers
             docker stop rj-amrutha-sandbox-fe || true
