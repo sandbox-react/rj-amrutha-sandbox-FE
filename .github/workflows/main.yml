@@ -1,0 +1,87 @@
+name: Deploy Frontend to Sandbox
+
+on:
+  push:
+    branches:
+      - development
+
+jobs:
+  # Job 1: Static Code Analysis
+  sonar_scan:
+    name: SonarCloud Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Sonar Properties
+        run: |
+          echo "sonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}" > sonar-project.properties
+          echo "sonar.organization=${{ secrets.SONAR_ORG }}" >> sonar-project.properties
+          echo "sonar.host.url=https://sonarcloud.io" >> sonar-project.properties
+          echo "sonar.sources=src" >> sonar-project.properties
+          echo "sonar.javascript.lcov.reportPaths=coverage/lcov.info" >> sonar-project.properties
+          echo "sonar.exclusions=**/node_modules/**,**/dist/**" >> sonar-project.properties
+          
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  # Job 2: Container Security Scan
+  image_scan:
+    name: Docker Image Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build local FE image
+        run: docker build -t rj-amrutha-sandbox-fe:test .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@v0.28.0
+        with:
+          image-ref: 'rj-amrutha-sandbox-fe:test'
+          format: 'table'
+          exit-code: '1' 
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  # Job 3: Production Deployment
+  deploy:
+    name: SSH & Docker Deploy
+    needs: [sonar_scan, image_scan] # Both scans must pass
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+            PROJECT_DIR="/home/ubuntu/rj-amrutha-sandbox-FE" 
+            cd $PROJECT_DIR
+            
+            git fetch origin
+            git checkout development
+            git pull origin development
+            
+            # Clean up old containers
+            docker stop rj-amrutha-sandbox-fe || true
+            docker rm rj-amrutha-sandbox-fe || true
+            
+            # Rebuild and launch
+            docker build -t rj-amrutha-sandbox-fe:latest .
+            docker run -d \
+              --name rj-amrutha-sandbox-fe \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              rj-amrutha-sandbox-fe:latest
