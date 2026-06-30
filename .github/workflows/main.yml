@@ -84,5 +84,5 @@ jobs:
             docker run -d \
               --name rj-amrutha-sandbox-fe \
               --restart unless-stopped \
-              -p 3000:3000 \
+              -p 5173:5173 \
               rj-amrutha-sandbox-fe:latest
