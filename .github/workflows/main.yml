@@ -24,7 +24,7 @@ jobs:
           echo "sonar.sources=src" >> sonar-project.properties
           echo "sonar.javascript.lcov.reportPaths=coverage/lcov.info" >> sonar-project.properties
           echo "sonar.exclusions=**/node_modules/**,**/dist/**" >> sonar-project.properties
-          
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5
         env:
@@ -38,7 +38,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build local FE image
         run: docker build -t rj-amrutha-sandbox-fe:test .
 
@@ -47,7 +47,7 @@ jobs:
         with:
           image-ref: 'rj-amrutha-sandbox-fe:test'
           format: 'table'
-          exit-code: '1' 
+          exit-code: '1'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -67,7 +67,9 @@ jobs:
           port: 22
           script: |
             set -e
-            PROJECT_DIR="/home/ubuntu/rj-amrutha-sandbox-FE" 
+            PROJECT_DIR="/home/ubuntu/rj-amrutha-sandbox-FE"
+            ENV_FILE="/home/ubuntu/env/frontend.env"
+            
             cd $PROJECT_DIR
             
             # Fetch changes and force the local branch to match origin exactly
@@ -79,10 +81,11 @@ jobs:
             docker stop rj-amrutha-sandbox-fe || true
             docker rm rj-amrutha-sandbox-fe || true
             
-            # Rebuild and launch
+            # Rebuild and launch with the environment file
             docker build -t rj-amrutha-sandbox-fe:latest .
             docker run -d \
               --name rj-amrutha-sandbox-fe \
               --restart unless-stopped \
+              --env-file $ENV_FILE \
               -p 5173:5173 \
               rj-amrutha-sandbox-fe:latest
