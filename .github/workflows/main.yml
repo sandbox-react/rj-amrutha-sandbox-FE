@@ -87,5 +87,5 @@ jobs:
               --name rj-amrutha-sandbox-fe \
               --restart unless-stopped \
               --env-file $ENV_FILE \
-              -p 5173:5173 \
+              -p 5173:80 \
               rj-amrutha-sandbox-fe:latest
